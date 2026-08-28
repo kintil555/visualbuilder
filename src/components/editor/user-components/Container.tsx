@@ -8,6 +8,9 @@ export interface ContainerProps {
   height?: number;
   background?: string;
   padding?: number;
+  margin?: number;
+  borderRadius?: number;
+  boxShadow?: boolean;
   position?: "static" | "sticky" | "relative";
   top?: number;
   hoverBackground?: string;
@@ -19,6 +22,9 @@ export function Container({
   height = 200,
   background = "#f3f4f6",
   padding = 16,
+  margin = 0,
+  borderRadius = 0,
+  boxShadow = false,
   position = "static",
   top = 0,
   hoverBackground,
@@ -33,6 +39,9 @@ export function Container({
     height,
     background,
     padding,
+    margin,
+    borderRadius,
+    boxShadow: boxShadow ? "0 4px 12px rgba(0,0,0,0.15)" : undefined,
     position: position === "static" ? "relative" : position,
     top: position === "sticky" ? top : undefined,
   };
@@ -63,6 +72,9 @@ Container.craft = {
     height: 200,
     background: "#f3f4f6",
     padding: 16,
+    margin: 0,
+    borderRadius: 0,
+    boxShadow: false,
     position: "static",
     top: 0,
   },
