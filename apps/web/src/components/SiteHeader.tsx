@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useSession, signIn, signOut } from "next-auth/react";
+import { useAuth } from "@/lib/authContext";
 
 export function SiteHeader() {
-  const { data: session, status } = useSession();
+  const { user, status, signIn, signOut } = useAuth();
 
   return (
     <header className="border-b border-zinc-200 bg-white">
@@ -24,9 +24,9 @@ export function SiteHeader() {
             Pengaturan
           </Link>
 
-          {status === "loading" ? null : session ? (
+          {status === "loading" ? null : user ? (
             <div className="flex items-center gap-3">
-              <span className="text-zinc-500">{session.user?.name}</span>
+              <span className="text-zinc-500">{user.username}</span>
               <button
                 onClick={() => signOut()}
                 className="rounded-full border border-zinc-300 px-3 py-1.5 text-zinc-700 hover:bg-zinc-50"
@@ -36,7 +36,7 @@ export function SiteHeader() {
             </div>
           ) : (
             <button
-              onClick={() => signIn("discord")}
+              onClick={() => signIn()}
               className="rounded-full bg-zinc-900 px-4 py-1.5 text-white hover:bg-zinc-800"
             >
               Masuk

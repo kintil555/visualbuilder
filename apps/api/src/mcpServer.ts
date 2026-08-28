@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { parseTree, addComponent, editComponent, deleteComponent } from "@/lib/projectTree";
+import { parseTree, addComponent, editComponent, deleteComponent } from "@visualbuilder/shared";
 
 /**
  * Builds a stateless MCP server. No database — the caller passes the

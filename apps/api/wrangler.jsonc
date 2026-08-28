@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "visualbuilder",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-08-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "ALLOWED_ORIGIN": "https://visual-builder.pages.dev"
+  }
+  // Secrets (set via `wrangler secret put`, do NOT put here):
+  //   AUTH_SECRET, DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET
+}

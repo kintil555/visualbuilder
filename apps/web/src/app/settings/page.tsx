@@ -1,18 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { useSession, signIn } from "next-auth/react";
+import { useAuth } from "@/lib/authContext";
 import { SiteHeader } from "@/components/SiteHeader";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL!;
+
 export default function SettingsPage() {
-  const { data: session, status } = useSession();
+  const { user, status, signIn, authedFetch } = useAuth();
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function generateToken() {
     setLoading(true);
     try {
-      const res = await fetch("/api/tokens", { method: "POST" });
+      const res = await authedFetch(`${API_URL}/api/tokens`, { method: "POST" });
       const data = await res.json();
       setToken(data.token);
     } finally {
@@ -29,7 +31,7 @@ export default function SettingsPage() {
     );
   }
 
-  if (!session) {
+  if (!user) {
     return (
       <div className="min-h-screen bg-white">
         <SiteHeader />
@@ -39,7 +41,7 @@ export default function SettingsPage() {
             Masuk dengan Discord untuk menghubungkan project ke Claude lewat MCP.
           </p>
           <button
-            onClick={() => signIn("discord")}
+            onClick={() => signIn()}
             className="rounded bg-[#5865F2] px-4 py-2 text-sm font-medium text-white hover:opacity-90"
           >
             Login dengan Discord
@@ -49,8 +51,7 @@ export default function SettingsPage() {
     );
   }
 
-  const mcpUrl =
-    typeof window !== "undefined" ? `${window.location.origin}/api/mcp` : "/api/mcp";
+  const mcpUrl = `${API_URL}/api/mcp`;
 
   return (
     <div className="min-h-screen bg-white">

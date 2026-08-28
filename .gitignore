@@ -15,6 +15,10 @@ out/
 *.db-journal
 prisma/*.db
 
+# Wrangler local secrets
+.dev.vars
+.dev.vars.*
+
 # Build artifacts
 *.tsbuildinfo
 next-env.d.ts

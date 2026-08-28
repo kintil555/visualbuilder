@@ -1,0 +1,21 @@
+{
+  "name": "@visualbuilder/api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "hono": "^4.6.0",
+    "jose": "^6.0.0",
+    "zod": "^4.4.3",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@visualbuilder/shared": "*"
+  },
+  "devDependencies": {
+    "wrangler": "latest",
+    "typescript": "^5",
+    "@cloudflare/workers-types": "latest"
+  }
+}
