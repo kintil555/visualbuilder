@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# Environment — NEVER commit these
+.env
+.env.local
+.env.*.local
+
+# Database (sisa Prisma, jaga-jaga)
+*.db
+*.db-journal
+prisma/*.db
+
+# Build artifacts
+*.tsbuildinfo
+next-env.d.ts
+.open-next/
+.wrangler/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
