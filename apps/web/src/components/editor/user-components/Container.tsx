@@ -52,7 +52,7 @@ export function Container({
         if (ref) connect(drag(ref));
       }}
       style={style}
-      className="border border-dashed border-gray-300 transition-colors"
+      className="border border-dashed border-slate-300/70 transition-all duration-150 hover:border-indigo-300 hover:shadow-[inset_0_0_0_1px_rgba(99,102,241,0.15)]"
       onMouseEnter={(e) => {
         if (hoverBackground) e.currentTarget.style.background = hoverBackground;
       }}

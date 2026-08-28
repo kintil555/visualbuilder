@@ -9,14 +9,15 @@ type SetProp = (key: string, value: unknown) => void;
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block">
-      <span className="block text-gray-600 mb-1">{label}</span>
+      <span className="block text-xs font-medium text-slate-500 mb-1">{label}</span>
       {children}
     </label>
   );
 }
 
-const inputClass = "w-full border rounded p-1";
-const colorClass = "w-full h-8";
+const inputClass =
+  "w-full border border-slate-200 rounded-md px-2 py-1.5 text-sm text-slate-700 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400";
+const colorClass = "w-full h-8 rounded-md border border-slate-200 cursor-pointer";
 
 function NumberField({ label, value, onChange, min }: { label: string; value: number; onChange: (v: number) => void; min?: number }) {
   return (
@@ -56,9 +57,14 @@ function SelectField({ label, value, options, onChange }: { label: string; value
 
 function CheckboxField({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
-    <label className="flex items-center gap-2">
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
-      <span className="text-gray-600">{label}</span>
+    <label className="flex items-center gap-2 cursor-pointer">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="w-4 h-4 rounded accent-indigo-600"
+      />
+      <span className="text-sm text-slate-600">{label}</span>
     </label>
   );
 }
@@ -216,7 +222,10 @@ export function SettingsPanel() {
 
   if (!selected) {
     return (
-      <div className="p-4 text-sm text-gray-400">Pilih elemen di canvas untuk mengedit properti.</div>
+      <div className="p-6 text-sm text-slate-400 text-center flex flex-col items-center gap-2 mt-10">
+        <span className="text-2xl">🎯</span>
+        Pilih elemen di canvas untuk mengedit properti.
+      </div>
     );
   }
 
@@ -229,8 +238,11 @@ export function SettingsPanel() {
   const p = selected.props as Props;
 
   return (
-    <div className="p-4 space-y-3 text-sm">
-      <div className="font-semibold text-gray-700">{selected.name}</div>
+    <div className="p-4 space-y-3 text-sm animate-panel-in" key={selected.id}>
+      <div className="font-semibold text-slate-800 pb-2 border-b border-slate-100 flex items-center gap-2">
+        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+        {selected.name}
+      </div>
 
       {selected.name === "Text" && <TextSettings p={p} setProp={setProp} />}
       {selected.name === "Button" && <ButtonSettings p={p} setProp={setProp} />}

@@ -37,8 +37,8 @@ export function UploadPanel() {
   }
 
   return (
-    <div className="p-4 border-b">
-      <div className="font-semibold text-gray-700 mb-2 text-sm">Import</div>
+    <div className="p-4">
+      <div className="font-semibold text-xs uppercase tracking-wide text-slate-400 mb-2">Import</div>
       <div
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
@@ -49,8 +49,10 @@ export function UploadPanel() {
           if (file) handleFile(file);
         }}
         onClick={() => inputRef.current?.click()}
-        className={`border-2 border-dashed rounded p-4 text-center text-xs cursor-pointer transition-colors ${
-          dragOver ? "border-blue-400 bg-blue-50" : "border-gray-300 hover:bg-gray-50"
+        className={`border-2 border-dashed rounded-lg p-4 text-center text-xs cursor-pointer transition-all duration-150 ${
+          dragOver
+            ? "border-indigo-400 bg-indigo-50 scale-[1.02]"
+            : "border-slate-200 text-slate-500 hover:border-indigo-300 hover:bg-slate-50"
         }`}
       >
         Tarik file .html / .zip ke sini, atau klik untuk pilih

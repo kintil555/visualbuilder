@@ -50,7 +50,7 @@ export function Section({
         if (ref) connect(drag(ref));
       }}
       style={style}
-      className="border border-dashed border-gray-300"
+      className="border border-dashed border-sky-300/60 transition-all duration-150 hover:border-sky-400 hover:shadow-[inset_0_0_0_1px_rgba(56,189,248,0.15)]"
     >
       {children}
     </div>

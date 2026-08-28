@@ -20,19 +20,25 @@ export default function EditorPage() {
       resolver={{ Container, TextBlock, ImageBlock, ButtonBlock, Section, VideoBlock }}
       onRender={RenderNode}
     >
-      <div className="flex flex-col h-screen">
-        <header className="flex items-center justify-between px-4 py-2 border-b bg-white">
-          <span className="font-semibold text-sm text-gray-700">Visual Builder</span>
+      <div className="flex flex-col h-screen bg-slate-50">
+        <header className="flex items-center justify-between px-5 h-14 shrink-0 border-b border-slate-200 bg-white/80 backdrop-blur-sm z-10">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-gradient-to-br from-indigo-500 to-violet-600" />
+            <span className="font-semibold text-sm text-slate-800 tracking-tight">Visual Builder</span>
+          </div>
           <ExportButton />
         </header>
         <div className="flex flex-1 min-h-0">
-          <aside className="w-56 border-r overflow-y-auto">
+          <aside className="w-64 shrink-0 border-r border-slate-200 bg-white overflow-y-auto flex flex-col divide-y divide-slate-100">
             <UploadPanel />
             <Toolbox />
             <LayersPanel />
           </aside>
-          <main className="flex-1 overflow-auto bg-gray-100 p-8">
-            <div className="bg-white shadow mx-auto" style={{ width: 1200, minHeight: 800 }}>
+          <main className="flex-1 overflow-auto p-10 bg-[radial-gradient(circle,_#e2e8f0_1px,_transparent_1px)] bg-[size:20px_20px]">
+            <div
+              className="bg-white shadow-xl shadow-slate-200/60 ring-1 ring-slate-200 mx-auto rounded-lg overflow-hidden animate-canvas-in"
+              style={{ width: 1200, minHeight: 800 }}
+            >
               <Frame>
                 <Element is={Container} canvas width={1200} height={800} background="#ffffff">
                   <TextBlock text="Selamat datang di editor visual" fontSize={24} fontWeight="bold" />
@@ -40,7 +46,7 @@ export default function EditorPage() {
               </Frame>
             </div>
           </main>
-          <aside className="w-64 border-l overflow-y-auto">
+          <aside className="w-72 shrink-0 border-l border-slate-200 bg-white overflow-y-auto">
             <SettingsPanel />
           </aside>
         </div>
