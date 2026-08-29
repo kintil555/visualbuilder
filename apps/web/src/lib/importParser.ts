@@ -23,36 +23,67 @@ function parseDeclarations(cssText: string): Record<string, string> {
   return out;
 }
 
+/** Resolve semua var(--x[, fallback]) di dalam satu value memakai map variabel. Maks 5 iterasi jaga-jaga circular ref. */
+function resolveVars(value: string, vars: Record<string, string>): string {
+  let result = value;
+  for (let i = 0; i < 5 && result.includes("var("); i++) {
+    result = result.replace(/var\(\s*(--[\w-]+)\s*(?:,\s*([^)]+))?\)/g, (_m, name, fallback) => {
+      return vars[name] ?? (fallback ? fallback.trim() : _m);
+    });
+  }
+  return result;
+}
+
 /**
  * Kumpulkan rule dari semua tag <style> dalam dokumen menjadi map
- * selector (persis seperti ditulis, mis. ".card", "#hero") -> declarations.
- * Hanya mendukung selector class/id tunggal tanpa kombinator — cukup untuk
- * mayoritas HTML export sederhana tanpa perlu CSS engine penuh.
+ * selector (persis seperti ditulis, mis. ".card", "#hero") -> declarations,
+ * dengan var(--x) sudah di-resolve memakai variabel dari :root.
+ * Hanya mendukung selector class/id/root tunggal tanpa kombinator — cukup
+ * untuk mayoritas HTML export sederhana tanpa perlu CSS engine penuh.
  */
-function collectStyleRules($: cheerio.CheerioAPI): Record<string, Record<string, string>> {
-  const rules: Record<string, Record<string, string>> = {};
+function collectStyleRules($: cheerio.CheerioAPI): {
+  rules: Record<string, Record<string, string>>;
+  cssVars: Record<string, string>;
+} {
+  const rawRules: { selectors: string[]; decls: Record<string, string> }[] = [];
+  const cssVars: Record<string, string> = {};
+
   $("style").each((_, el) => {
     const css = $(el).contents().text();
-    // cocokkan blok "selector { decls }" satu per satu
     const blockRe = /([^{}]+)\{([^{}]*)\}/g;
     let match: RegExpExecArray | null;
     while ((match = blockRe.exec(css))) {
       const selectors = match[1].split(",").map((s) => s.trim());
       const decls = parseDeclarations(match[2]);
       if (Object.keys(decls).length === 0) continue;
-      selectors.forEach((sel) => {
-        if (!/^[.#][\w-]+$/.test(sel)) return; // hanya .class atau #id tunggal
-        rules[sel] = { ...(rules[sel] || {}), ...decls };
-      });
+      if (selectors.includes(":root")) {
+        Object.entries(decls).forEach(([k, v]) => {
+          if (k.startsWith("--")) cssVars[k] = v;
+        });
+      }
+      rawRules.push({ selectors, decls });
     }
   });
-  return rules;
+
+  const rules: Record<string, Record<string, string>> = {};
+  rawRules.forEach(({ selectors, decls }) => {
+    const resolved: Record<string, string> = {};
+    Object.entries(decls).forEach(([k, v]) => {
+      resolved[k] = resolveVars(v, cssVars);
+    });
+    selectors.forEach((sel) => {
+      if (!/^[.#][\w-]+$/.test(sel)) return; // hanya .class atau #id tunggal (:root sudah ditangani di atas)
+      rules[sel] = { ...(rules[sel] || {}), ...resolved };
+    });
+  });
+  return { rules, cssVars };
 }
 
 /** Gabungkan style dari <style> rules (class lalu id) + inline style attr (prioritas tertinggi). */
 function resolveNodeStyle(
   $node: cheerio.Cheerio<AnyNode>,
-  styleRules: Record<string, Record<string, string>>
+  styleRules: Record<string, Record<string, string>>,
+  cssVars: Record<string, string>
 ): Record<string, string> {
   let merged: Record<string, string> = {};
   const classList = ($node.attr("class") || "").split(/\s+/).filter(Boolean);
@@ -63,7 +94,11 @@ function resolveNodeStyle(
   const id = $node.attr("id");
   if (id && styleRules[`#${id}`]) merged = { ...merged, ...styleRules[`#${id}`] };
   const inline = $node.attr("style");
-  if (inline) merged = { ...merged, ...parseDeclarations(inline) };
+  if (inline) {
+    const inlineDecls = parseDeclarations(inline);
+    Object.keys(inlineDecls).forEach((k) => { inlineDecls[k] = resolveVars(inlineDecls[k], cssVars); });
+    merged = { ...merged, ...inlineDecls };
+  }
   return merged;
 }
 
@@ -71,14 +106,14 @@ function resolveNodeStyle(
 export function parseHtmlToTree(html: string): ImportedNode {
   const $ = cheerio.load(html);
   const body = $("body").length ? $("body") : $.root();
-  const styleRules = collectStyleRules($);
+  const { rules: styleRules, cssVars } = collectStyleRules($);
 
   function walk(el: cheerio.Cheerio<AnyNode>): ImportedNode[] {
     const nodes: ImportedNode[] = [];
     el.children().each((_, node) => {
       const $node = $(node);
       const tag = (node as { tagName?: string }).tagName?.toLowerCase() || "div";
-      const style = resolveNodeStyle($node, styleRules);
+      const style = resolveNodeStyle($node, styleRules, cssVars);
       if (tag === "img") {
         nodes.push({ tag, src: $node.attr("src") || "", style, children: [] });
       } else if ($node.children().length === 0) {
