@@ -6,25 +6,85 @@ export interface ImportedNode {
   tag: string;
   text?: string;
   src?: string;
+  style?: Record<string, string>;
   children: ImportedNode[];
+}
+
+/** Parse deklarasi CSS sederhana "prop: value; prop2: value2" jadi object. */
+function parseDeclarations(cssText: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  cssText.split(";").forEach((decl) => {
+    const idx = decl.indexOf(":");
+    if (idx === -1) return;
+    const prop = decl.slice(0, idx).trim().toLowerCase();
+    const value = decl.slice(idx + 1).trim();
+    if (prop && value) out[prop] = value;
+  });
+  return out;
+}
+
+/**
+ * Kumpulkan rule dari semua tag <style> dalam dokumen menjadi map
+ * selector (persis seperti ditulis, mis. ".card", "#hero") -> declarations.
+ * Hanya mendukung selector class/id tunggal tanpa kombinator — cukup untuk
+ * mayoritas HTML export sederhana tanpa perlu CSS engine penuh.
+ */
+function collectStyleRules($: cheerio.CheerioAPI): Record<string, Record<string, string>> {
+  const rules: Record<string, Record<string, string>> = {};
+  $("style").each((_, el) => {
+    const css = $(el).contents().text();
+    // cocokkan blok "selector { decls }" satu per satu
+    const blockRe = /([^{}]+)\{([^{}]*)\}/g;
+    let match: RegExpExecArray | null;
+    while ((match = blockRe.exec(css))) {
+      const selectors = match[1].split(",").map((s) => s.trim());
+      const decls = parseDeclarations(match[2]);
+      if (Object.keys(decls).length === 0) continue;
+      selectors.forEach((sel) => {
+        if (!/^[.#][\w-]+$/.test(sel)) return; // hanya .class atau #id tunggal
+        rules[sel] = { ...(rules[sel] || {}), ...decls };
+      });
+    }
+  });
+  return rules;
+}
+
+/** Gabungkan style dari <style> rules (class lalu id) + inline style attr (prioritas tertinggi). */
+function resolveNodeStyle(
+  $node: cheerio.Cheerio<AnyNode>,
+  styleRules: Record<string, Record<string, string>>
+): Record<string, string> {
+  let merged: Record<string, string> = {};
+  const classList = ($node.attr("class") || "").split(/\s+/).filter(Boolean);
+  classList.forEach((cls) => {
+    const rule = styleRules[`.${cls}`];
+    if (rule) merged = { ...merged, ...rule };
+  });
+  const id = $node.attr("id");
+  if (id && styleRules[`#${id}`]) merged = { ...merged, ...styleRules[`#${id}`] };
+  const inline = $node.attr("style");
+  if (inline) merged = { ...merged, ...parseDeclarations(inline) };
+  return merged;
 }
 
 /** Parse satu file HTML string menjadi tree sederhana */
 export function parseHtmlToTree(html: string): ImportedNode {
   const $ = cheerio.load(html);
   const body = $("body").length ? $("body") : $.root();
+  const styleRules = collectStyleRules($);
 
   function walk(el: cheerio.Cheerio<AnyNode>): ImportedNode[] {
     const nodes: ImportedNode[] = [];
     el.children().each((_, node) => {
       const $node = $(node);
       const tag = (node as { tagName?: string }).tagName?.toLowerCase() || "div";
+      const style = resolveNodeStyle($node, styleRules);
       if (tag === "img") {
-        nodes.push({ tag, src: $node.attr("src") || "", children: [] });
+        nodes.push({ tag, src: $node.attr("src") || "", style, children: [] });
       } else if ($node.children().length === 0) {
-        nodes.push({ tag, text: $node.text().trim(), children: [] });
+        nodes.push({ tag, text: $node.text().trim(), style, children: [] });
       } else {
-        nodes.push({ tag, children: walk($node) });
+        nodes.push({ tag, style, children: walk($node) });
       }
     });
     return nodes;
@@ -71,6 +131,23 @@ const IMG_TAGS = new Set(["img"]);
 // tag yang dianggap "leaf teks" kalau punya isi teks dan tidak punya children
 const TEXT_TAGS = new Set(["p", "span", "h1", "h2", "h3", "h4", "h5", "h6", "a", "li", "button", "label"]);
 
+/** Ambil angka px dari value CSS semacam "16px" / "1rem" / "20". Return undefined kalau tak bisa diparse. */
+function toPx(value: string | undefined, remBase = 16): number | undefined {
+  if (!value) return undefined;
+  const remMatch = value.match(/^([\d.]+)rem$/);
+  if (remMatch) return parseFloat(remMatch[1]) * remBase;
+  const pxMatch = value.match(/^([\d.]+)px$/);
+  if (pxMatch) return parseFloat(pxMatch[1]);
+  const plain = value.match(/^([\d.]+)$/);
+  if (plain) return parseFloat(plain[1]);
+  return undefined;
+}
+
+function isValidColor(value: string | undefined): value is string {
+  if (!value) return false;
+  return /^(#[0-9a-fA-F]{3,8}|rgba?\(|hsla?\(|[a-zA-Z]+)$/.test(value.trim());
+}
+
 /**
  * Convert satu ImportedNode (dan children-nya) menjadi flat map SerializedNodes
  * yang siap dipakai `actions.deserialize()`. ROOT_NODE selalu jadi Container akar.
@@ -83,12 +160,19 @@ export function importedTreeToCraftNodes(
 
   function addNode(imported: ImportedNode, parentId: string | null, id: string) {
     const children = imported.children || [];
+    const style = imported.style || {};
 
     if (IMG_TAGS.has(imported.tag)) {
       nodes[id] = {
         type: { resolvedName: "ImageBlock" },
         isCanvas: false,
-        props: { src: imported.src || "https://placehold.co/400x300", width: 400, height: 300, objectFit: "cover" },
+        props: {
+          src: imported.src || "https://placehold.co/400x300",
+          width: toPx(style.width) ?? 400,
+          height: toPx(style.height) ?? 300,
+          objectFit: style["object-fit"] || "cover",
+          borderRadius: toPx(style["border-radius"]) ?? 0,
+        },
         displayName: "Image",
         custom: {},
         parent: parentId,
@@ -106,10 +190,11 @@ export function importedTreeToCraftNodes(
         isCanvas: false,
         props: {
           text: imported.text || "",
-          fontSize: 16,
-          fontFamily: "Inter, sans-serif",
-          color: "#111827",
-          fontWeight: imported.tag.match(/^h[1-6]$/) ? "bold" : "normal",
+          fontSize: toPx(style["font-size"]) ?? 16,
+          fontFamily: style["font-family"] || "Inter, sans-serif",
+          color: isValidColor(style.color) ? style.color : "#111827",
+          fontWeight:
+            style["font-weight"] || (imported.tag.match(/^h[1-6]$/) ? "bold" : "normal"),
         },
         displayName: "Text",
         custom: {},
@@ -126,7 +211,17 @@ export function importedTreeToCraftNodes(
     nodes[id] = {
       type: { resolvedName: "Container" },
       isCanvas: true,
-      props: { width: 400, height: children.length ? "auto" : 100, background: "#ffffff", padding: 16, position: "static", top: 0 },
+      props: {
+        width: toPx(style.width) ?? 400,
+        height: toPx(style.height) ?? (children.length ? "auto" : 100),
+        background: isValidColor(style["background-color"] || style.background)
+          ? style["background-color"] || style.background
+          : "#ffffff",
+        padding: toPx(style.padding) ?? 16,
+        borderRadius: toPx(style["border-radius"]) ?? 0,
+        position: "static",
+        top: 0,
+      },
       displayName: "Container",
       custom: {},
       parent: parentId,

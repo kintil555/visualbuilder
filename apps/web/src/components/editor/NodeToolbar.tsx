@@ -59,8 +59,8 @@ export function NodeToolbar({ nodeId, name, dom }: NodeToolbarProps) {
   return (
     <div
       ref={ref}
-      className="fixed z-50 flex items-center gap-1 rounded bg-blue-600 px-2 py-1 text-xs text-white shadow-lg select-none"
-      style={{ transform: "translateY(-100%)" }}
+      className="fixed flex items-center gap-1 rounded bg-blue-600 px-2 py-1 text-xs text-white shadow-lg select-none"
+      style={{ transform: "translateY(-100%)", zIndex: 3001 }}
     >
       <span className="pr-1 font-medium">{name}</span>
       <button
