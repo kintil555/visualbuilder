@@ -10,6 +10,9 @@ export interface TextBlockProps {
   fontFamily?: string;
   color?: string;
   fontWeight?: string;
+  position?: "static" | "absolute";
+  top?: number;
+  left?: number;
 }
 
 export function TextBlock({
@@ -18,6 +21,9 @@ export function TextBlock({
   fontFamily = "Inter, sans-serif",
   color = "#111827",
   fontWeight = "normal",
+  position = "static",
+  top = 0,
+  left = 0,
 }: TextBlockProps) {
   const {
     connectors: { connect, drag },
@@ -33,7 +39,10 @@ export function TextBlock({
   );
 
   return (
-    <div ref={(ref) => { if (ref) connect(drag(ref)); }}>
+    <div
+      ref={(ref) => { if (ref) connect(drag(ref)); }}
+      style={position === "absolute" ? { position: "absolute", top, left } : undefined}
+    >
       <ContentEditable
         html={text}
         disabled={!editable}
@@ -55,5 +64,8 @@ TextBlock.craft = {
     fontFamily: "Inter, sans-serif",
     color: "#111827",
     fontWeight: "normal",
+    position: "static",
+    top: 0,
+    left: 0,
   },
 };

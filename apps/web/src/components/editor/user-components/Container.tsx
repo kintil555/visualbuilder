@@ -11,8 +11,9 @@ export interface ContainerProps {
   margin?: number;
   borderRadius?: number;
   boxShadow?: boolean;
-  position?: "static" | "sticky" | "relative";
+  position?: "static" | "sticky" | "relative" | "absolute";
   top?: number;
+  left?: number;
   hoverBackground?: string;
   children?: ReactNode;
 }
@@ -27,6 +28,7 @@ export function Container({
   boxShadow = false,
   position = "static",
   top = 0,
+  left = 0,
   hoverBackground,
   children,
 }: ContainerProps) {
@@ -43,7 +45,8 @@ export function Container({
     borderRadius,
     boxShadow: boxShadow ? "0 4px 12px rgba(0,0,0,0.15)" : undefined,
     position: position === "static" ? "relative" : position,
-    top: position === "sticky" ? top : undefined,
+    top: position === "sticky" || position === "absolute" ? top : undefined,
+    left: position === "absolute" ? left : undefined,
   };
 
   return (

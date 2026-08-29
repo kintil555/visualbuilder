@@ -183,6 +183,25 @@ function isValidColor(value: string | undefined): value is string {
   return /^(#[0-9a-fA-F]{3,8}|rgba?\(|hsla?\(|[a-zA-Z]+)$/.test(value.trim());
 }
 
+/** Ambil {position, top, left} dari style asli — hanya "absolute" yang ditangkap, mode lain (relative/fixed/sticky) di-treat sebagai static di canvas builder ini. Mendukung top/left langsung; right/bottom dikonversi kasar dengan asumsi parent width/height dari style container (tidak selalu akurat, tapi lebih baik daripada 0). */
+function extractPosition(
+  style: Record<string, string>,
+  parentWidth?: number,
+  parentHeight?: number
+): { position: "static" | "absolute"; top: number; left: number } {
+  if (style.position !== "absolute") return { position: "static", top: 0, left: 0 };
+
+  let top = toPx(style.top);
+  if (top === undefined && style.bottom !== undefined && parentHeight !== undefined) {
+    top = parentHeight - (toPx(style.bottom) ?? 0);
+  }
+  let left = toPx(style.left);
+  if (left === undefined && style.right !== undefined && parentWidth !== undefined) {
+    left = parentWidth - (toPx(style.right) ?? 0);
+  }
+  return { position: "absolute", top: top ?? 0, left: left ?? 0 };
+}
+
 /**
  * Convert satu ImportedNode (dan children-nya) menjadi flat map SerializedNodes
  * yang siap dipakai `actions.deserialize()`. ROOT_NODE selalu jadi Container akar.
@@ -193,11 +212,17 @@ export function importedTreeToCraftNodes(
   idCounter = 0;
   const nodes: Record<string, CraftSerializedNode> = {};
 
-  function addNode(imported: ImportedNode, parentId: string | null, id: string) {
+  function addNode(
+    imported: ImportedNode,
+    parentId: string | null,
+    id: string,
+    parentDims?: { width?: number; height?: number }
+  ) {
     const children = imported.children || [];
     const style = imported.style || {};
 
     if (IMG_TAGS.has(imported.tag)) {
+      const pos = extractPosition(style, parentDims?.width, parentDims?.height);
       nodes[id] = {
         type: { resolvedName: "ImageBlock" },
         isCanvas: false,
@@ -207,6 +232,7 @@ export function importedTreeToCraftNodes(
           height: toPx(style.height) ?? 300,
           objectFit: style["object-fit"] || "cover",
           borderRadius: toPx(style["border-radius"]) ?? 0,
+          ...pos,
         },
         displayName: "Image",
         custom: {},
@@ -220,6 +246,7 @@ export function importedTreeToCraftNodes(
 
     const hasText = !!imported.text && imported.text.trim().length > 0;
     if (children.length === 0 && (hasText || TEXT_TAGS.has(imported.tag))) {
+      const pos = extractPosition(style, parentDims?.width, parentDims?.height);
       nodes[id] = {
         type: { resolvedName: "TextBlock" },
         isCanvas: false,
@@ -230,6 +257,7 @@ export function importedTreeToCraftNodes(
           color: isValidColor(style.color) ? style.color : "#111827",
           fontWeight:
             style["font-weight"] || (imported.tag.match(/^h[1-6]$/) ? "bold" : "normal"),
+          ...pos,
         },
         displayName: "Text",
         custom: {},
@@ -243,19 +271,21 @@ export function importedTreeToCraftNodes(
 
     // Default: Container (bisa nested / kosong)
     const childIds = children.map(() => nextId("node"));
+    const pos = extractPosition(style, parentDims?.width, parentDims?.height);
+    const containerWidth = toPx(style.width) ?? 400;
+    const containerHeight = toPx(style.height) ?? (children.length ? undefined : 100);
     nodes[id] = {
       type: { resolvedName: "Container" },
       isCanvas: true,
       props: {
-        width: toPx(style.width) ?? 400,
-        height: toPx(style.height) ?? (children.length ? "auto" : 100),
+        width: containerWidth,
+        height: containerHeight ?? "auto",
         background: isValidColor(style["background-color"] || style.background)
           ? style["background-color"] || style.background
           : "#ffffff",
         padding: toPx(style.padding) ?? 16,
         borderRadius: toPx(style["border-radius"]) ?? 0,
-        position: "static",
-        top: 0,
+        ...pos,
       },
       displayName: "Container",
       custom: {},
@@ -265,7 +295,9 @@ export function importedTreeToCraftNodes(
       linkedNodes: {},
     };
 
-    children.forEach((child, i) => addNode(child, id, childIds[i]));
+    children.forEach((child, i) =>
+      addNode(child, id, childIds[i], { width: containerWidth, height: containerHeight })
+    );
   }
 
   addNode(root, null, "ROOT");
